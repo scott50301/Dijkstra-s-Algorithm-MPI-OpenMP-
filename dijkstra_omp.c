@@ -82,6 +82,7 @@ dijkstra(
   m[s] = 1;
   min.u = -1; /* avoid compiler warning */
   omp_set_num_threads(threads);
+  printf("thread¡G&s",threads);
 #pragma omp parallel
   {
 #pragma omp for
