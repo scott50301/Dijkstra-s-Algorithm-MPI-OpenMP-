@@ -61,7 +61,8 @@ dijkstra(
   int const s,
   int const n,
   float const * const a,
-  float ** const lp
+  float ** const lp,
+  int threads
 )
 {
   int i, j;
@@ -80,7 +81,7 @@ dijkstra(
 
   m[s] = 1;
   min.u = -1; /* avoid compiler warning */
-  //omp_set_num_threads(3);
+  omp_set_num_threads(threads);
 #pragma omp parallel
   {
 #pragma omp for
@@ -168,9 +169,9 @@ main(int argc, char ** argv)
 
 
   load(argv[1], &n, &a);
-
+ 
   ts = clock();
-  dijkstra(atoi(argv[2]), n, a, &l);
+  dijkstra(atoi(argv[2]), n, a, &l, atoi(argv[4]));
   te = clock();
 
   print_time((double)(te-ts)/CLOCKS_PER_SEC);
