@@ -62,7 +62,7 @@ dijkstra(
   int const n,
   float const * const a,
   float ** const lp,
-  int threads
+  int const threads
 )
 {
   int i, j;
@@ -82,7 +82,7 @@ dijkstra(
   m[s] = 1;
   min.u = -1; /* avoid compiler warning */
   omp_set_num_threads(threads);
-  printf("thread¡G%o\n",threads);
+  printf("thread %o \n",threads);
 #pragma omp parallel
   {
 #pragma omp for
