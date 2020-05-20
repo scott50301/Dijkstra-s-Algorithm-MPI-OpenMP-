@@ -85,14 +85,14 @@ dijkstra(
   printf("thread %o \n",threads);
 #pragma omp parallel
   {
-#pragma omp for schedule(static)
+#pragma omp for 
     for (i=0; i<n; ++i) {
       l[i] = a(i,s);
     }
 
     };
 
-   // #pragma omp parallel
+    #pragma omp parallel
     {
     for (i=1; i<n; ++i) {
         min.l = INFINITY;
@@ -103,7 +103,7 @@ dijkstra(
 #pragma omp parallel
         {
 
-#pragma omp for schedule(static)
+#pragma omp for 
             for (j=0; j<n; ++j) {
                 if (!m[j] && l[j] < min.l) {
                     min.l = l[j];
@@ -111,8 +111,8 @@ dijkstra(
                 }
             }
             m[min.u] = 1;
-//#pragma omp barrier
-#pragma omp for schedule(static)
+#pragma omp barrier
+#pragma omp for
         for (j=0; j<n; ++j) {
             if (!m[j] && min.l+a(j,min.u) < l[j])
                 l[j] = min.l+a(j,min.u);
