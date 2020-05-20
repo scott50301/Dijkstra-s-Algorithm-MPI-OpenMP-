@@ -96,7 +96,7 @@ dijkstra(
     {
     for (i=1; i<n; ++i) {
         min.l = INFINITY;
-        //omp_set_num_threads(4);
+        omp_set_num_threads(threads);
 
         /* find local minimum */
 
