@@ -85,7 +85,7 @@ dijkstra(
   printf("thread %o \n",threads);
 #pragma omp parallel
   {
-#pragma omp for
+#pragma omp for schedule(static)
     for (i=0; i<n; ++i) {
       l[i] = a(i,s);
     }
@@ -103,7 +103,7 @@ dijkstra(
 #pragma omp parallel
         {
 
-#pragma omp for
+#pragma omp for schedule(static)
             for (j=0; j<n; ++j) {
                 if (!m[j] && l[j] < min.l) {
                     min.l = l[j];
@@ -112,7 +112,7 @@ dijkstra(
             }
             m[min.u] = 1;
 //#pragma omp barrier
-#pragma omp for
+#pragma omp for schedule(static)
         for (j=0; j<n; ++j) {
             if (!m[j] && min.l+a(j,min.u) < l[j])
                 l[j] = min.l+a(j,min.u);
@@ -163,11 +163,11 @@ main(int argc, char ** argv)
   clock_t ts, te;
   float * a, * l;
 
-  if(argc < 4){
+  if(argc < 5){
      printf("Invalid number of arguments.\nUsage: dijkstra <graph> <source> <output_file>.\n");
      return EXIT_FAILURE;
   }
-  printf("argv4 %s\n", argv[4]);
+  
   load(argv[1], &n, &a);
  
   ts = clock();
