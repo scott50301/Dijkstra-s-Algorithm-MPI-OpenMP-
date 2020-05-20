@@ -167,8 +167,7 @@ main(int argc, char ** argv)
      printf("Invalid number of arguments.\nUsage: dijkstra <graph> <source> <output_file>.\n");
      return EXIT_FAILURE;
   }
-
-
+  printf("argv4 %s\n", argv[4]);
   load(argv[1], &n, &a);
  
   ts = clock();
