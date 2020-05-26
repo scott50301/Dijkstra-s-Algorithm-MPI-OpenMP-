@@ -249,7 +249,7 @@ main(int argc, char **argv) {
     float *a = NULL, *result = NULL;
     int * displs = NULL, *localNumOfElements = NULL;
 
-    if (argc < 5) {
+    if (argc < 4) {
         printf("Invalid number of arguments.\nUsage: dijkstra <graph> <source> <output_file>.\n");
         return EXIT_FAILURE;
     }
