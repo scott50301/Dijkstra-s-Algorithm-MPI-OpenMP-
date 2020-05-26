@@ -270,7 +270,7 @@ main(int argc, char **argv) {
     dijkstra(atoi(argv[2]), n, a, &result, rank, displs, localNumOfElements, processors);
     te = MPI_Wtime();
 
-    //print_time((te - ts) / CLOCKS_PER_SEC);
+    print_time((te - ts) / CLOCKS_PER_SEC);
     if (rank == MAIN_PROCESS) {
         print_time(te - ts);
         print_numbers(argv[3], n, result);
