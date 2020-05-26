@@ -24,37 +24,32 @@
 #define SEND_COUNTS_TAG 4
 #define SEND_RESULT_TAG 5
 
-static void 
-calculateDispls(
-	int ** displs, 
-	int ** localNumOfElements, 
-	int processors, 
-	int size){
+static void calculateDispls(int ** displs, int ** localNumOfElements, int numberOfProcessors, int size){
     int local, reminder;
-    if (size < processors){//If there are more nodes than rows(columns), the extra node(s) are useless.
+    if (size < numberOfProcessors){//If there are more nodes than rows(columns), the extra node(s) are useless.
         local = 1;
-        *localNumOfElements = malloc(processors * sizeof(**localNumOfElements));
+        *localNumOfElements = malloc(numberOfProcessors * sizeof(**localNumOfElements));
         int i = 0;
         for (; i < size; i++){
             *(*localNumOfElements + i) = local;
         }
-        for (; i < processors;i++){
+        for (; i < numberOfProcessors;i++){
             *(*localNumOfElements + i) = 0;
         }
     } else {//If there are more rows than available nodes, separate into almost equal pieces.
-        local = size / processors;
-        reminder = size % processors;
+        local = size / numberOfProcessors;
+        reminder = size % numberOfProcessors;
 
         //calculate numbers to send to each node.
-        *localNumOfElements = malloc(processors * sizeof(**localNumOfElements));
-        for (int i = 0; i < processors; i++) {
+        *localNumOfElements = malloc(numberOfProcessors * sizeof(**localNumOfElements));
+        for (int i = 0; i < numberOfProcessors; i++) {
             *(*localNumOfElements + i) = local;
         }
-        *(*localNumOfElements + processors - 1) += reminder;
+        *(*localNumOfElements + numberOfProcessors - 1) += reminder;
     }
     //calculate offset that points from send buffer(vals).
-    *displs = malloc(processors * sizeof(**displs));
-    for (int i = 0; i < processors; i++) {
+    *displs = malloc(numberOfProcessors * sizeof(**displs));
+    for (int i = 0; i < numberOfProcessors; i++) {
         *(*displs + i) = 0;
         for (int j = 0; j < i; j++) {
             *(*displs + i) += *(*localNumOfElements + j);
@@ -65,7 +60,7 @@ static void
 load(
         char const *const filename,
         int *const np,
-        float **const ap, int processors, int ** displs, int ** localNumOfElements, int rank
+        float **const ap, int numberOfProcessors, int ** displs, int ** localNumOfElements, int rank
 ) {
     int n;
     float *a = NULL;
@@ -83,7 +78,7 @@ load(
         assert(1 == ret);
 
         //Calculate how many rows each node will hold. And their offsets(displs).
-        calculateDispls(displs, localNumOfElements, processors, n);
+        calculateDispls(displs, localNumOfElements, numberOfProcessors, n);
 
         /* allocate memory for local values */
         a = malloc(n * *(*localNumOfElements) * sizeof(*a));
@@ -94,13 +89,13 @@ load(
         *ap = a;
         //printf("0. %d info read\n", j);//TODO debug use only
         //Read & send. Each node will get localNumOfElements rows of data.
-        for (i = 1; i < processors; ++i) {
+        for (i = 1; i < numberOfProcessors; ++i) {
             a = malloc(n * *(*localNumOfElements + i) * sizeof(*a));
             //Send just collected info to that node
             MPI_Send(&n, 1, MPI_INTEGER, i, SEND_NUM_TAG, MPI_COMM_WORLD);
 
-            MPI_Send(*displs, processors, MPI_INTEGER, i, SEND_DISPLS_TAG, MPI_COMM_WORLD);
-            MPI_Send(*localNumOfElements, processors, MPI_INTEGER, i, SEND_ELEMNTS_TAG, MPI_COMM_WORLD);
+            MPI_Send(*displs, numberOfProcessors, MPI_INTEGER, i, SEND_DISPLS_TAG, MPI_COMM_WORLD);
+            MPI_Send(*localNumOfElements, numberOfProcessors, MPI_INTEGER, i, SEND_ELEMNTS_TAG, MPI_COMM_WORLD);
             //Read file
             for (j = 0; j < *(* localNumOfElements + i) * n; ++j) {
                 ret = fscanf(fp, "%f", &a[j]);
@@ -118,10 +113,10 @@ load(
     } else {//All nodes except MAIN NODE will receive piece(rows) of graph data.
         int count;
         MPI_Recv(&n, 1, MPI_INTEGER, MAIN_PROCESS, SEND_NUM_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        *displs = malloc(processors * sizeof(**displs));
-        MPI_Recv(*displs, processors, MPI_INTEGER, MAIN_PROCESS, SEND_DISPLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        *localNumOfElements = malloc(processors * sizeof(**localNumOfElements));
-        MPI_Recv(*localNumOfElements, processors, MPI_INTEGER, MAIN_PROCESS, SEND_ELEMNTS_TAG, MPI_COMM_WORLD,
+        *displs = malloc(numberOfProcessors * sizeof(**displs));
+        MPI_Recv(*displs, numberOfProcessors, MPI_INTEGER, MAIN_PROCESS, SEND_DISPLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        *localNumOfElements = malloc(numberOfProcessors * sizeof(**localNumOfElements));
+        MPI_Recv(*localNumOfElements, numberOfProcessors, MPI_INTEGER, MAIN_PROCESS, SEND_ELEMNTS_TAG, MPI_COMM_WORLD,
                  MPI_STATUS_IGNORE);
         MPI_Recv(&count, 1, MPI_INTEGER, MAIN_PROCESS, SEND_COUNTS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         a = malloc(count * sizeof(*a));
@@ -139,7 +134,7 @@ dijkstra(
         int const source,
         int const n,
         float const *const a,
-        float **const result, int rank, int * displs, int * localNumOfElements, int processors
+        float **const result, int rank, int * displs, int * localNumOfElements, int numberOfProcessors
 ) {
     int i, j, k, sourceNode = 0;
     struct float_int {
@@ -162,7 +157,7 @@ dijkstra(
     localResult = malloc(n * sizeof(*resultVector));
     assert(localResult);
 
-    for (i = 0; i < processors; i++){
+    for (i = 0; i < numberOfProcessors; i++){
         if (source < displs[i]){
             sourceNode = i - 1;
             break;
@@ -244,7 +239,7 @@ print_numbers(
 
 int
 main(int argc, char **argv) {
-    int n, processors, rank;;
+    int n, numberOfProcessors, rank;;
     double ts, te;
     float *a = NULL, *result = NULL;
     int * displs = NULL, *localNumOfElements = NULL;
@@ -256,10 +251,10 @@ main(int argc, char **argv) {
 
 
     MPI_Init(NULL, NULL);
-    MPI_Comm_size(MPI_COMM_WORLD, &processors);
+    MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcessors);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    load(argv[1], &n, &a, processors, &displs, &localNumOfElements, rank);
+    load(argv[1], &n, &a, numberOfProcessors, &displs, &localNumOfElements, rank);
     /* Debug load function use
     char fileName[50];
     sprintf(fileName, "output%d", rank);
@@ -267,7 +262,7 @@ main(int argc, char **argv) {
      */
     MPI_Barrier(MPI_COMM_WORLD);
     ts = MPI_Wtime();
-    dijkstra(atoi(argv[2]), n, a, &result, rank, displs, localNumOfElements, processors);
+    dijkstra(atoi(argv[2]), n, a, &result, rank, displs, localNumOfElements, numberOfProcessors);
     te = MPI_Wtime();
 
     print_time((te - ts) / CLOCKS_PER_SEC);
