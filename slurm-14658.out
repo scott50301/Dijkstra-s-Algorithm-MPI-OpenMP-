@@ -1,0 +1,60 @@
+thread 1 
+Operation Time: 0.0000s
+thread 2 
+Operation Time: 0.0000s
+thread 4 
+Operation Time: 0.0000s
+thread 10 
+Operation Time: 0.0000s
+thread 20 
+Operation Time: 0.0000s
+thread 34 
+Operation Time: 0.0000s
+thread 1 
+Operation Time: 0.0000s
+thread 2 
+Operation Time: 0.0100s
+thread 4 
+Operation Time: 0.0100s
+thread 10 
+Operation Time: 0.0000s
+thread 20 
+Operation Time: 0.0100s
+thread 34 
+Operation Time: 0.0100s
+thread 1 
+Operation Time: 0.0100s
+thread 2 
+Operation Time: 0.0200s
+thread 4 
+Operation Time: 0.0300s
+thread 10 
+Operation Time: 0.0500s
+thread 20 
+Operation Time: 0.0900s
+thread 34 
+Operation Time: 0.0600s
+thread 1 
+Operation Time: 0.5700s
+thread 2 
+Operation Time: 1.2600s
+thread 4 
+Operation Time: 1.2600s
+thread 10 
+Operation Time: 1.3300s
+thread 20 
+Operation Time: 1.2400s
+thread 34 
+Operation Time: 1.5000s
+thread 1 
+Operation Time: 2.4800s
+thread 2 
+Operation Time: 5.4900s
+thread 4 
+Operation Time: 5.6500s
+thread 10 
+Operation Time: 5.5100s
+thread 20 
+Operation Time: 5.5000s
+thread 34 
+Operation Time: 5.7200s
