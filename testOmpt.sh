@@ -1,13 +1,4 @@
 #!/bin/bash
-##SBATCH --job-name=pl2ap
-#SBATCH --partition=cpu
-#SBATCH --cpus-per-task=28
-#SBATCH --mem-per-cpu=1G
-#SBATCH --nodes=3
-#SBATCH --output=pl2ap-%j.out
-#SBATCH --time=10:00
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=sjhou@scu.edu#
 ./dijkstra_omp ./data/100.graph 1 test.out 1
 ./dijkstra_omp ./data/100.graph 1 test.out 2
 ./dijkstra_omp ./data/100.graph 1 test.out 4
