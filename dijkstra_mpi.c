@@ -16,36 +16,37 @@
 /* define access directions for matrices */
 #define a(R, C) a[ROWMJR(R,C,ln,n)]
 #define b(R, C) b[ROWMJR(R,C,nn,n)]
+
 #define MAIN_PROCESS 0
 #define SEND_NUM_TAG 0
 #define SEND_DISPLS_TAG 1
 #define SEND_ELEMNTS_TAG 2
-#define SEND_WEIGHT_TAG 3
+#define WEIGHT_TAG 3
 #define SEND_COUNTS_TAG 4
 #define SEND_RESULT_TAG 5
 
-static void calculateDispls(int ** displs, int ** localNumOfElements, int processors, int size){
+static void cal(int ** displs, int ** elements, int processors, int size){
     int local, reminder;
-    if (size >= processors){//If there are more nodes than rows(columns), the extra node(s) are useless.
+    if (size >= processors){
         local = size / processors;
         reminder = size % processors;
 
         //calculate numbers to send to each node.
-        *localNumOfElements = malloc(processors * sizeof(**localNumOfElements));
+        *elements = malloc(processors * sizeof(**elements));
         for (int i = 0; i < processors; i++) {
-            *(*localNumOfElements + i) = local;
+            *(*elements + i) = local;
         }
-        *(*localNumOfElements + processors - 1) += reminder;
+        *(*elements + processors - 1) += reminder;
         
     } else {//If there are more rows than available nodes, separate into almost equal pieces.
         local = 1;
-        *localNumOfElements = malloc(processors * sizeof(**localNumOfElements));
+        *elements = malloc(processors * sizeof(**elements));
         int i = 0;
         for (; i < size; i++) {
-            *(*localNumOfElements + i) = local;
+            *(*elements + i) = local;
         }
         for (; i < processors; i++) {
-            *(*localNumOfElements + i) = 0;
+            *(*elements + i) = 0;
         }
     }
     //calculate offset that points from send buffer(vals).
@@ -53,7 +54,7 @@ static void calculateDispls(int ** displs, int ** localNumOfElements, int proces
     for (int i = 0; i < processors; i++) {
         *(*displs + i) = 0;
         for (int j = 0; j < i; j++) {
-            *(*displs + i) += *(*localNumOfElements + j);
+            *(*displs + i) += *(*elements + j);
         }
     }
 }
@@ -64,7 +65,7 @@ load(
     float **const ap, 
     int processors, 
     int ** displs, 
-    int ** localNumOfElements, 
+    int ** elements,
     int rank
 ) {
     int n;
@@ -83,32 +84,31 @@ load(
         assert(1 == ret);
 
         //Calculate how many rows each node will hold. And their offsets(displs).
-        calculateDispls(displs, localNumOfElements, processors, n);
+        cal(displs, elements, processors, n);
 
         /* allocate memory for local values */
-        a = malloc(n * *(*localNumOfElements) * sizeof(*a));
-        for (j = 0; j < *(* localNumOfElements) * n; ++j) {
+        a = malloc(n * *(*elements) * sizeof(*a));
+        for (j = 0; j < *(*elements) * n; ++j) {
             ret = fscanf(fp, "%f", &a[j]);
             assert(1 == ret);
         }
         *ap = a;
-        //printf("0. %d info read\n", j);//TODO debug use only
-        //Read & send. Each node will get localNumOfElements rows of data.
+
         for (i = 1; i < processors; ++i) {
-            a = malloc(n * *(*localNumOfElements + i) * sizeof(*a));
+            a = malloc(n * *(*elements + i) * sizeof(*a));
             //Send just collected info to that node
             MPI_Send(&n, 1, MPI_INTEGER, i, SEND_NUM_TAG, MPI_COMM_WORLD);
 
             MPI_Send(*displs, processors, MPI_INTEGER, i, SEND_DISPLS_TAG, MPI_COMM_WORLD);
-            MPI_Send(*localNumOfElements, processors, MPI_INTEGER, i, SEND_ELEMNTS_TAG, MPI_COMM_WORLD);
+            MPI_Send(*elements, processors, MPI_INTEGER, i, SEND_ELEMNTS_TAG, MPI_COMM_WORLD);
             //Read file
-            for (j = 0; j < *(* localNumOfElements + i) * n; ++j) {
+            for (j = 0; j < *(*elements + i) * n; ++j) {
                 ret = fscanf(fp, "%f", &a[j]);
                 assert(1 == ret);
             }
             //printf("%d. %d info read\n", i, j);//TODO debug use only
             MPI_Send(&j, 1, MPI_INTEGER, i, SEND_COUNTS_TAG, MPI_COMM_WORLD);
-            MPI_Send(a, j, MPI_FLOAT, i, SEND_WEIGHT_TAG, MPI_COMM_WORLD);
+            MPI_Send(a, j, MPI_FLOAT, i, WEIGHT_TAG, MPI_COMM_WORLD);
             free(a);//Free memory after send.
         }
 
@@ -120,12 +120,11 @@ load(
         MPI_Recv(&n, 1, MPI_INTEGER, MAIN_PROCESS, SEND_NUM_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         *displs = malloc(processors * sizeof(**displs));
         MPI_Recv(*displs, processors, MPI_INTEGER, MAIN_PROCESS, SEND_DISPLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        *localNumOfElements = malloc(processors * sizeof(**localNumOfElements));
-        MPI_Recv(*localNumOfElements, processors, MPI_INTEGER, MAIN_PROCESS, SEND_ELEMNTS_TAG, MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
+        *elements = malloc(processors * sizeof(**elements));
+        MPI_Recv(*elements, processors, MPI_INTEGER, MAIN_PROCESS, SEND_ELEMNTS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&count, 1, MPI_INTEGER, MAIN_PROCESS, SEND_COUNTS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         a = malloc(count * sizeof(*a));
-        MPI_Recv(a, count, MPI_FLOAT, MAIN_PROCESS, SEND_WEIGHT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(a, count, MPI_FLOAT, MAIN_PROCESS, WEIGHT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         *ap = a;
     }
     /* record output values */
@@ -142,7 +141,7 @@ dijkstra(
     float **const result, 
     int rank, 
     int * displs, 
-    int * localNumOfElements, 
+    int * elements,
     int processors
 ) {
     int i, j, k, sourceNode = 0;
@@ -150,21 +149,19 @@ dijkstra(
         float distance;
         int u;
     } min;
-    char *set = NULL;
-    float *resultVector = NULL;
-    float * localResult = NULL;
+    char *m = NULL;
+    float *l = NULL;
+    float * localRes= NULL;
 
-    //Simple hash set to record which vertex has already been visited(with fixed min distance).
-    //0 stands for not visited. Other values stands for visited.
-    set = calloc(n, sizeof(*set));
-    assert(set);
 
-    //A vector(1d array) to store for result(the min distance from source to each vertex).
-    resultVector = malloc(n * sizeof(*resultVector));
-    assert(resultVector);
+    m = calloc(n, sizeof(*m));
+    assert(m);
 
-    localResult = malloc(n * sizeof(*resultVector));
-    assert(localResult);
+    l = malloc(n * sizeof(*l));
+    assert(l);
+
+    localRes = malloc(n * sizeof(*l));
+    assert(localRes);
 
     for (i = 0; i < processors; i++){
         if (source < displs[i]){
@@ -176,15 +173,15 @@ dijkstra(
     //The initial result distance is what currently the distance between source to each vertex.
     if (rank == sourceNode) {//Copy and prepare for broad cast.
         for (i = 0; i < n; ++i) {
-            resultVector[i] = a[i + n * (source - displs[sourceNode])];
+            l[i] = a[i + n * (source - displs[sourceNode])];
             
         }
     }
-    MPI_Bcast(resultVector, n, MPI_FLOAT, sourceNode, MPI_COMM_WORLD);
+    MPI_Bcast(l, n, MPI_FLOAT, sourceNode, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
     //We don't have to visit source vertex.
     //Such that the distance from source to source is defined in the graph_matrix[source, source].
-    set[source] = 1;
+    m[source] = 1;
     min.u = -1; /* avoid compiler warning */
 
     //Iterate through each vertex.
@@ -192,30 +189,30 @@ dijkstra(
         min.distance = INFINITY;
         //Find local minimum vertex in order to do relax operation(update min distance to each vertex that vertex connected with).
         for (j = 0; j < n; ++j) {
-            if (!set[j] && resultVector[j] < min.distance) {
-                min.distance = resultVector[j];
+            if (!m[j] && l[j] < min.distance) {
+                min.distance = l[j];
                 min.u = j;
             }
-            localResult[j] = resultVector[j];
+            localRes[j] = l[j];
         }
        
-        set[min.u] = 1;
-        for (j = 0; j < localNumOfElements[rank]; j++){
-            if (set[j + displs[rank]]){
+        m[min.u] = 1;
+        for (j = 0; j < elements[rank]; j++){
+            if (m[j + displs[rank]]){
                 continue;
             }
-            if (a(j, min.u) + min.distance < localResult[j + displs[rank]]){
-                localResult[j + displs[rank]] = a(j, min.u) + min.distance;
+            if (a(j, min.u) + min.distance < localRes[j + displs[rank]]){
+                localRes[j + displs[rank]] = a(j, min.u) + min.distance;
             }
         }
 
-        MPI_Allreduce(localResult, resultVector, n, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+        MPI_Allreduce(localRes, l, n, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
         MPI_Barrier(MPI_COMM_WORLD);
     }
 
-    free(set);
+    free(m);
 
-    *result = resultVector;
+    *result = l;
 }
 
 static void
@@ -251,22 +248,22 @@ main(int argc, char **argv) {
     int n, processors, rank;;
     double ts, te;
     float *a = NULL, *result = NULL;
-    int * displs = NULL, *localNumOfElements = NULL;
+    int * displs = NULL, * elements = NULL;
 
     if (argc < 4) {
         printf("Invalid number of arguments.\nUsage: dijkstra <graph> <source> <output_file>.\n");
         return EXIT_FAILURE;
     }
 
-    MPI_Init(NULL, NULL);
+    MPI_Init(NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &processors);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    load(argv[1], &n, &a, processors, &displs, &localNumOfElements, rank);
+    load(argv[1], &n, &a, processors, &displs, &elements, rank);
 
     MPI_Barrier(MPI_COMM_WORLD);
     ts = MPI_Wtime();
-    dijkstra(atoi(argv[2]), n, a, &result, rank, displs, localNumOfElements, processors);
+    dijkstra(atoi(argv[2]), n, a, &result, rank, displs, elements, processors);
     te = MPI_Wtime();
 
     print_time((te - ts) / CLOCKS_PER_SEC);
