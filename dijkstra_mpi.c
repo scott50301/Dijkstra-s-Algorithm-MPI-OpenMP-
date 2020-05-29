@@ -59,9 +59,13 @@ static void calculateDispls(int ** displs, int ** localNumOfElements, int proces
 }
 static void
 load(
-        char const *const filename,
-        int *const np,
-        float **const ap, int processors, int ** displs, int ** localNumOfElements, int rank
+    char const *const filename,
+    int *const np,
+    float **const ap, 
+    int processors, 
+    int ** displs, 
+    int ** localNumOfElements, 
+    int rank
 ) {
     int n;
     float *a = NULL;
@@ -132,10 +136,14 @@ load(
 
 static void
 dijkstra(
-        int const source,
-        int const n,
-        float const *const a,
-        float **const result, int rank, int * displs, int * localNumOfElements, int processors
+    int const source,
+    int const n,
+    float const *const a,
+    float **const result, 
+    int rank, 
+    int * displs, 
+    int * localNumOfElements, 
+    int processors
 ) {
     int i, j, k, sourceNode = 0;
     struct float_int {
@@ -199,7 +207,6 @@ dijkstra(
             if (a(j, min.u) + min.distance < localResult[j + displs[rank]]){
                 localResult[j + displs[rank]] = a(j, min.u) + min.distance;
             }
-            //printf("Vertex %d: Local min is: %.1f\n", j, localResult[j + displs[rank]]);
         }
 
         MPI_Allreduce(localResult, resultVector, n, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
@@ -218,9 +225,10 @@ print_time(double const seconds) {
 
 static void
 print_numbers(
-        char const *const filename,
-        int const n,
-        float const *const numbers) {
+    char const *const filename,
+    int const n,
+    float const *const numbers
+){
     int i;
     FILE *fout;
 
@@ -250,17 +258,12 @@ main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &processors);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     load(argv[1], &n, &a, processors, &displs, &localNumOfElements, rank);
-    /* Debug load function use
-    char fileName[50];
-    sprintf(fileName, "output%d", rank);
-    print_numbers(fileName, *(localNumOfElements + rank) * n, a);
-     */
+
     MPI_Barrier(MPI_COMM_WORLD);
     ts = MPI_Wtime();
     dijkstra(atoi(argv[2]), n, a, &result, rank, displs, localNumOfElements, processors);
