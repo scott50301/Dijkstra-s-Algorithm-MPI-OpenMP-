@@ -255,7 +255,7 @@ main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    MPI_Init(NULL);
+    MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &processors);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
