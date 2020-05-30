@@ -37,7 +37,7 @@ static void cal(int ** displs, int ** elements, int processes, int size){
         }
         *(*elements + processes - 1) += reminder;
         
-    } else {//If there are more rows than available nodes, separate into almost equal pieces.
+    } else {
         local = 1;
         *elements = malloc(processes * sizeof(**elements));
         int i = 0;
@@ -48,7 +48,7 @@ static void cal(int ** displs, int ** elements, int processes, int size){
             *(*elements + i) = 0;
         }
     }
-    //calculate offset that points from send buffer(vals).
+  
     *displs = malloc(processes * sizeof(**displs));
     for (int i = 0; i < processes; i++) {
         *(*displs + i) = 0;
@@ -69,7 +69,7 @@ load(
 ) {
     int n;
     float *a = NULL;
-    if (rank == MAIN_PROCESS) {//Main node read the file and send to other nodes piece by piece.
+    if (rank == MAIN_PROCESS) {
         int i, j, k, ret;
         FILE *fp = NULL;
 
@@ -82,7 +82,6 @@ load(
         ret = fscanf(fp, "%d", &n);
         assert(1 == ret);
 
-        //Calculate how many rows each node will hold. And their offsets(displs).
         cal(displs, elements, processes, n);
 
         /* allocate memory for local values */
@@ -105,7 +104,7 @@ load(
                 ret = fscanf(fp, "%f", &a[j]);
                 assert(1 == ret);
             }
-            //printf("%d. %d info read\n", i, j);//TODO debug use only
+  
             MPI_Send(&j, 1, MPI_INTEGER, i, COUNTS_TAG, MPI_COMM_WORLD);
             MPI_Send(a, j, MPI_FLOAT, i, WEIGHT_TAG, MPI_COMM_WORLD);
             free(a);//Free memory after send.
@@ -114,7 +113,7 @@ load(
         /* close file */
         ret = fclose(fp);
         assert(!ret);
-    } else {//All nodes except MAIN NODE will receive piece(rows) of graph data.
+    } else {
         int count;
         MPI_Recv(&n, 1, MPI_INTEGER, MAIN_PROCESS, SEND_NUM_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         *displs = malloc(processes * sizeof(**displs));
@@ -126,7 +125,6 @@ load(
         MPI_Recv(a, count, MPI_FLOAT, MAIN_PROCESS, WEIGHT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         *ap = a;
     }
-    /* record output values */
 
     *np = n;
     MPI_Barrier(MPI_COMM_WORLD);
@@ -169,8 +167,8 @@ dijkstra(
         }
     }
     
-    //The initial result distance is what currently the distance between source to each vertex.
-    if (rank == sourceNode) {//Copy and prepare for broad cast.
+  
+    if (rank == sourceNode) {
         for (i = 0; i < n; ++i) {
             l[i] = a[i + n * (s - displs[sourceNode])];
             
