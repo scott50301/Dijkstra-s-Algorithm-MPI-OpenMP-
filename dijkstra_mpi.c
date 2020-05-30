@@ -19,11 +19,10 @@
 
 #define MAIN_PROCESS 0
 #define SEND_NUM_TAG 0
-#define SEND_DISPLS_TAG 1
-#define SEND_ELEMNTS_TAG 2
+#define DISPLS_TAG 1
+#define ELEMNTS_TAG 2
 #define WEIGHT_TAG 3
 #define COUNTS_TAG 4
-#define SEND_RESULT_TAG 5
 
 static void cal(int ** displs, int ** elements, int processes, int size){
     int local, reminder;
@@ -99,8 +98,8 @@ load(
             //Send just collected info to that node
             MPI_Send(&n, 1, MPI_INTEGER, i, SEND_NUM_TAG, MPI_COMM_WORLD);
 
-            MPI_Send(*displs, processes, MPI_INTEGER, i, SEND_DISPLS_TAG, MPI_COMM_WORLD);
-            MPI_Send(*elements, processes, MPI_INTEGER, i, SEND_ELEMNTS_TAG, MPI_COMM_WORLD);
+            MPI_Send(*displs, processes, MPI_INTEGER, i, DISPLS_TAG, MPI_COMM_WORLD);
+            MPI_Send(*elements, processes, MPI_INTEGER, i, ELEMNTS_TAG, MPI_COMM_WORLD);
             //Read file
             for (j = 0; j < *(*elements + i) * n; ++j) {
                 ret = fscanf(fp, "%f", &a[j]);
@@ -119,9 +118,9 @@ load(
         int count;
         MPI_Recv(&n, 1, MPI_INTEGER, MAIN_PROCESS, SEND_NUM_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         *displs = malloc(processes * sizeof(**displs));
-        MPI_Recv(*displs, processes, MPI_INTEGER, MAIN_PROCESS, SEND_DISPLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(*displs, processes, MPI_INTEGER, MAIN_PROCESS, DISPLS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         *elements = malloc(processes * sizeof(**elements));
-        MPI_Recv(*elements, processes, MPI_INTEGER, MAIN_PROCESS, SEND_ELEMNTS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(*elements, processes, MPI_INTEGER, MAIN_PROCESS, ELEMNTS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&count, 1, MPI_INTEGER, MAIN_PROCESS, COUNTS_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         a = malloc(count * sizeof(*a));
         MPI_Recv(a, count, MPI_FLOAT, MAIN_PROCESS, WEIGHT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
